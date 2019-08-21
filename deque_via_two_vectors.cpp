@@ -1,53 +1,49 @@
-#include "test_runner.h"
+#include <vector>
 #include <stdexcept>
-
 using namespace std;
 
 template <typename T>
 class Deque {
 private:
-	vector<T> forwardVec;
-	vector<T> backwardVec;
-
+	std::vector<T> forwardVec;
+	std::vector<T> backwardVec;
 public:
-	bool Empty() const {return forwardVec.empty() && backwardVec.empty();}
-	size_t Size() const {return forwardVec.size() + backwardVec.size();}
+	const bool Empty() const {return forwardVec.empty() && backwardVec.empty();}
+	const size_t Size() const {return forwardVec.size() + backwardVec.size();}
 
 	T& operator[](size_t index){
-		if (index < backwardVec.size()) return backwardVec[backwardVec.size() - index];
-						else return forwardVec[index - backwardVec.size()];
+		return At(index);
 	}
 
 	const T& operator[] (size_t index) const{
-		if (index < backwardVec.size()) return backwardVec[backwardVec.size() - index];
-						else return forwardVec[index - backwardVec.size()];
+		return At(index);
 	}
 
 	const T& At(size_t index) const {
-			if (index > Size() - 1)
-				throw std::invalid_argument("Index out of range");
+			if (index > Size() - 1 || index < 0)
+				throw std::out_of_range("Index out of range");
 			else {
-				if (index < backwardVec.size()) return backwardVec[backwardVec.size() - index];
+				if (index < backwardVec.size()) return backwardVec[backwardVec.size() - index - 1];
 				else return forwardVec[index - backwardVec.size()];
 			}
 	}
 
 	 T& At(size_t index) {
-			if (index > Size() - 1)
-				throw std::invalid_argument("Index out of range");
+			if (index > Size() - 1 || index < 0)
+				throw std::out_of_range("Index out of range");
 			else {
-				if (index < backwardVec.size()) return backwardVec[backwardVec.size() - index];
+				if (index < backwardVec.size()) return backwardVec[backwardVec.size() - index - 1];
 				else return forwardVec[index - backwardVec.size()];
 			}
 	}
 
-	 const T& Front() const { return backwardVec.back();}
+	 const T& Front() const { return At(0);}
 
-	 T& Front() {return backwardVec.back();}
+	 T& Front() {return At(0);}
 
-	 const T& Back() const { return forwardVec.back();}
+	 const T& Back() const { return At(Size() - 1);}
 
-	 T& Back() {return forwardVec.back();}
+	 T& Back() {return At(Size() - 1);}
 
 	 void PushFront(T i_data){ backwardVec.push_back(i_data); }
 
