@@ -1,115 +1,113 @@
 #include <iostream>
-#include <vector>
+#include <string>
+#include <queue>
 #include <map>
-#include <set>
 #include <deque>
+#include <set>
 
 using namespace std;
 
-typedef int room_count_type;
-typedef string hotel_name_type;
-typedef int64_t time_type;
-typedef int clientId_type;
-
-class HotelBooker{
-
-public:
-	static constexpr int DAY_SECONDS = 86400;
-
-	struct booking_t{
-		time_type time;
-		hotel_name_type hotel_name;
-		clientId_type client_id;
-		room_count_type room_count;
-	};
-
-	HotelBooker(): relevantBookings({}),
-				   currentTime(0),
-				   unique_clients({}),
-				   booked_rooms_count({})
-	{}
-
-	void Book(const time_type time,
-			const hotel_name_type& hotel_name,
-			const clientId_type client_id,
-			const room_count_type room_count){
-		currentTime = time;
-		ClearOldBookings();
-		relevantBookings.push_back({time, hotel_name, client_id, room_count});
-		UpdateUniqueClients();
-		UpdateBookedRoomsCount();
-	}
-
-	const int Clients(const hotel_name_type& hotel_name) const{
-		if (unique_clients.count(hotel_name) == 0) return 0;
-		return unique_clients.at(hotel_name).size();
-	}
-
-	const room_count_type Rooms(const hotel_name_type& hotel_name) const{
-		if (booked_rooms_count.count(hotel_name) == 0) return 0;
-		return booked_rooms_count.at(hotel_name);
-	}
-private:
-	deque<booking_t> relevantBookings;
-	time_type currentTime;
-	map<hotel_name_type, set<clientId_type>> unique_clients;
-	map<hotel_name_type, room_count_type> booked_rooms_count;
-
-	void ClearOldBookings(){
-		if (relevantBookings.empty()) return;
-		while(relevantBookings.front().time <= currentTime - DAY_SECONDS)
-			relevantBookings.pop_front();
-	}
-
-	void UpdateUniqueClients(){
-		unique_clients.clear();
-		if (relevantBookings.empty()) return;
-		for (const auto& booking: relevantBookings)
-			unique_clients[booking.hotel_name].insert(booking.client_id);
-	}
-
-	void UpdateBookedRoomsCount(){
-		booked_rooms_count.clear();
-		if (relevantBookings.empty()) return;
-		for (const auto& booking: relevantBookings)
-			if (booked_rooms_count.count(booking.hotel_name) == 0)
-				booked_rooms_count[booking.hotel_name] = booking.room_count;
-			else
-				booked_rooms_count[booking.hotel_name] += booking.room_count;
-	}
+struct Booking{
+  int64_t time;
+  string hotel_name;
+  int client_id;
+  int room_count;
 };
 
-int main() {
-  ios::sync_with_stdio(false);
-  cin.tie(nullptr);
+class Booker{
+const int64_t SECONDS_PER_DAY = 86400;
+public:
+  Booker(): currentTime(0){};
 
-  HotelBooker booker;
-
-  int Q;
-  cin >> Q;
-  for (int queryNum = 0; queryNum < Q; queryNum++){
-	  string command;
-	  cin >> command;
-	  if (command == "BOOK"){
-		  time_type time;
-		  hotel_name_type hotel_name;
-		  int client_id;
-		  room_count_type room_count;
-
-		  cin >> time >> hotel_name >> client_id >> room_count;
-		  booker.Book(time, hotel_name, client_id, room_count);
-	  }
-	  else if (command == "CLIENTS"){
-		  hotel_name_type hotel_name;
-		  cin >> hotel_name;
-		  cout << booker.Clients(hotel_name) << endl;
-	  }
-	  else if (command == "ROOMS"){
-		  hotel_name_type hotel_name;
-		  cin >> hotel_name;
-		  cout << booker.Rooms(hotel_name) << endl;
-	  }
+  void Book(const Booking& i_booking){
+    UpdateBookings(i_booking);
   }
 
+  int Clients(const std::string& i_hotel_name) const{
+    if (clients.count(i_hotel_name) == 0)
+      return 0;
+   return clients.at(i_hotel_name).size();
+  }
+
+  int Rooms(const std::string& i_hotel_name) const{
+    if (rooms.count(i_hotel_name) == 0)
+      return 0;
+    return rooms.at(i_hotel_name);
+  }
+
+private:
+  std::queue<Booking> bookings;
+  std::map<string, std::map<int, int>> clients;
+  std::map<string, int> rooms;
+  int64_t currentTime;
+
+  void UpdateBookings(const Booking& i_booking){
+    currentTime = i_booking.time;
+    while(!bookings.empty() && currentTime - bookings.front().time >= SECONDS_PER_DAY){
+      ReduceRooms(bookings.front());
+      RemoveClient(bookings.front());
+      bookings.pop();
+    }
+
+    bookings.push(i_booking);
+    AddRooms(i_booking);
+    AddClients(i_booking);
+  }
+
+  void ReduceRooms(const Booking& i_booking){
+    if(clients.at(i_booking.hotel_name).at(i_booking.client_id) >= i_booking.room_count){
+      clients.at(i_booking.hotel_name).at(i_booking.client_id) -= i_booking.room_count;
+      rooms.at(i_booking.hotel_name) -= i_booking.room_count;
+     }
+  }
+
+  void RemoveClient(const Booking& i_booking){
+	  if (clients.count(i_booking.hotel_name) > 0 &&
+			  clients.at(i_booking.hotel_name).count(i_booking.client_id) > 0 )
+		  if (clients.at(i_booking.hotel_name).at(i_booking.client_id) <= 0)
+			  clients.erase(i_booking.hotel_name);
+  }
+
+  void AddRooms(const Booking& i_booking){
+    if (rooms.count(i_booking.hotel_name) == 0)
+      rooms[i_booking.hotel_name] = i_booking.room_count;
+    else
+      rooms.at(i_booking.hotel_name) += i_booking.room_count;
+  }
+
+  void AddClients(const Booking& i_booking){
+    if (clients.count(i_booking.hotel_name) == 0 || clients.at(i_booking.hotel_name).count(i_booking.client_id) == 0)
+      clients[i_booking.hotel_name][i_booking.client_id] = i_booking.room_count;
+    else
+      clients.at(i_booking.hotel_name).at(i_booking.client_id) += i_booking.room_count;
+    }
+};
+
+int main(){
+  Booker booker;
+
+  int N;
+  cin >> N;
+  for(int n = 0; n < N; ++n){
+    std::string command;
+    std::cin >> command;
+
+    if (command == "BOOK"){
+      Booking booking;
+      std::cin >> booking.time >> booking.hotel_name >> booking.client_id
+        >> booking.room_count;
+      booker.Book(booking);
+    }
+    else if (command == "CLIENTS"){
+      std::string hotel_name;
+      std::cin >> hotel_name;
+      std::cout << booker.Clients(hotel_name) << std::endl;
+    }
+    else if (command == "ROOMS"){
+      std::string hotel_name;
+      std::cin >> hotel_name;
+      std::cout << booker.Rooms(hotel_name) << std::endl;
+    }
+  }
   return 0;
 }
